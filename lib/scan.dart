@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'app_state.dart';
 
 import 'package:barcode_scan/barcode_scan.dart';
@@ -63,36 +64,33 @@ class _ScanState extends State<ScanScreen> {
                     onPressed: postLogin,
                     child: const Text('LOGIN')
                 ),
-              )
-              ,
+              ),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Text(AppState.of(context).barcode, textAlign: TextAlign.center,),
-              )
-              ,
+                child: Text("HTTPS"),
+              ),
+              Checkbox(
+                  value: AppState.of(context).httpsCBValue,
+              ),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Text(AppState.of(context).url, textAlign: TextAlign.center,),
-              )
-              ,
+                child: Text("Secure communication"),
+              ),
+              Checkbox(
+                  value: AppState.of(context).secureCommunication,
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Text("Domain name"),
+              ),
+
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: Text(AppState.of(context).domainname, textAlign: TextAlign.center,),
-              )
-              ,
+              ),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Text(AppState.of(context).jsontext, textAlign: TextAlign.center,),
-              )
-              ,
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Text(AppState.of(context).httphttps, textAlign: TextAlign.center,),
-              )
-              ,
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Text(AppState.of(context).webPubKey, textAlign: TextAlign.center,),
+                child: Text(AppState.of(context).localPrivKey, textAlign: TextAlign.center,),
               )
               ,
             ],
@@ -105,12 +103,24 @@ class _ScanState extends State<ScanScreen> {
 
     try {
       String barcode = await BarcodeScanner.scan();
-      setState(() {
         AppState.of(context).barcode = barcode;
         uri=Uri.parse(barcode);
         AppState.of(context).domainname = uri.host;
         AppState.of(context).httphttps= uri.scheme;
+        if(AppState.of(context).httphttps=="https") {
+          AppState.of(context).httpsCBValue = true;
+        }else{
+          AppState.of(context).httpsCBValue = false;
+        }
+
         AppState.of(context).url= uri.origin+uri.path;
+
+        if(AppState.of(context).httphttps=="https") {
+          AppState.of(context).secureCommunication = true;
+        }else{
+          AppState.of(context).secureCommunication = false;
+        }
+
 
         if(uri.hasQuery) {
 //          postVars.addmap(uri.queryParameters);
@@ -118,11 +128,13 @@ class _ScanState extends State<ScanScreen> {
         AppState.of(context).postVars.add("sid",uri.queryParameters["sid"]);
         AppState.of(context).postVars.add("username", "loginTextP6");
         AppState.of(context).postVars.add("action", "login");
+        //await _read(uri.host);
 
         AppState.of(context).jsontext= AppState.of(context).postVars.getJsonString();
 
 
         getPublicKey(AppState.of(context).domainname);
+      setState(() {
 
       });
     } on PlatformException catch (e) {
@@ -181,16 +193,23 @@ class _ScanState extends State<ScanScreen> {
     final parser = RSAKeyParser();
     final RSAPublicKey publicKey = parser.parse(AppState.of(context).webPubKey);
 
-    final encrypter = Encrypter(RSA(publicKey: publicKey));
-    final encrypted = encrypter.encrypt(AppState.of(context).jsontext);
+    final RSAPublicKey localPublicKey = parser.parse(AppState.of(context).localPubKey);
+    final RSAPrivateKey localPrivateKey = parser.parse(AppState.of(context).localPrivKey);
 
+    final encrypter = Encrypter(RSA(publicKey: publicKey));
     var client = new  http.Client();
     try {
+      final encrypted = encrypter.encrypt(AppState.of(context).jsontext);
 
       var uriResponse = await client.post(AppState.of(context).url,
-          body: {'data': encrypted.base64 });
+          body: {'data': encrypted.base64 , 'pubKey': base64.encode(utf8.encode(AppState.of(context).localPubKey))});
      // http.Response str = await client.get(uriResponse.body);
-    } finally {
+      AppState.of(context).domainname=uriResponse.toString();
+      var decrypter = Encrypter(RSA(publicKey: localPublicKey, privateKey: localPrivateKey ));
+      //var decrypted = encrypter.decrypt(uriResponse);
+      setState(() {  });
+    }
+    finally {
       client.close();
     }
   }
@@ -202,26 +221,34 @@ class _ScanState extends State<ScanScreen> {
    await helper.insert(key);
 }
 
-  _read(String url) async {
+  Future _read(String url) async {
     DatabaseHelper helper = DatabaseHelper.instance;
     Keys key = await helper.queryKey(url);
-    if (url == null) {
+    if (key == null) {
       //Generate keys and save
       Keys key = Keys();
       key.url=url;
       key.email = '';
       key.pubkey = '';
       key.privkey='';
-      var client = new  http.Client();
-         http.Response str = await client.get(AppState.of(context).rsaUrl);
-
+      try {
+        var client = new  http.Client();
+        http.Response str = await client.get(AppState
+            .of(context)
+            .rsaUrl);
         JsonDecoder decoder;
         var vars = new Map();
         vars = decoder.convert(str.toString());
         key.pubkey = vars['pubkey'];
-        key.privkey=vars['privkey'];
+        key.privkey = vars['privkey'];
         _save(key);
+        AppState.of(context).localPubKey=key.pubkey;
+        AppState.of(context).localPrivKey=key.privkey;
         client.close();
+      }catch(e){
+        print(e);
+      }
+
     } else {
       AppState.of(context).localPubKey=key.pubkey;
       AppState.of(context).localPrivKey=key.privkey;

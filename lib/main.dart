@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tblid_flutter/AddEmail.dart';
 import 'package:tblid_flutter/scan.dart';
 import 'package:flutter/rendering.dart';
 import 'package:basic_utils/basic_utils.dart';
@@ -51,7 +52,8 @@ class MyHomePage extends StatefulWidget  {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
-  final LocalAuthenticationService _localAuth = locator<LocalAuthenticationService>();
+  final LocalAuthenticationService _localAuth = locator<
+      LocalAuthenticationService>();
 
   void _incrementCounter() {
     setState(() {
@@ -103,28 +105,41 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             Padding(
               padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-              child: RaisedButton(
-                  color: Colors.blue,
-                  textColor: Colors.white,
-                  splashColor: Colors.blueGrey,
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => ScanScreen()),
-                    );
-                  },
-                  child: const Text('SCAN QR CODE')
+              child: Center(
+                child: Column(
+                  children: <Widget>[
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: RaisedButton(
+                          color: Colors.blue,
+                          textColor: Colors.white,
+                          splashColor: Colors.blueGrey,
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => ScanScreen()),
+                            );
+                          },
+                          child: const Text('SCAN QR CODE')
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             TextField(
               decoration: InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Email:'
+                  border: InputBorder.none,
+                  hintText: 'Email:'
               ),
             ),
             Text(
               '$_counter',
-              style: Theme.of(context).textTheme.display1,
+              style: Theme
+                  .of(context)
+                  .textTheme
+                  .display1,
             ),
             RaisedButton(
               child: Text('authenticate'),
@@ -134,8 +149,11 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
+        onPressed: () {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => AddEmailRoute()));
+        },
+        tooltip: 'Add Email address',
         child: Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );

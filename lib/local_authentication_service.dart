@@ -13,10 +13,10 @@ class LocalAuthenticationService {
   bool isAuthenticated = false;
 
   Future<void> authenticate() async {
-    if (_isProtectionEnabled) {
+    if (!_isProtectionEnabled) {
       try {
         isAuthenticated = await _auth.authenticateWithBiometrics(
-          localizedReason: 'authenticate to access',
+          localizedReason: 'authenticate to login to the webpage',
           useErrorDialogs: true,
           stickyAuth: true,
         );
